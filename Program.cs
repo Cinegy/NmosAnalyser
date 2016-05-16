@@ -155,7 +155,10 @@ namespace NmosAnalyser
                     PrintToConsole("Bitrates (Mbps): {0:0.00}/{1:0.00}/{2:0.00}/{3:0.00} (Current/Avg/Peak/Low)\t\t\t",
                         (_networkMetric.CurrentBitrate / 131072.0), _networkMetric.AverageBitrate / 131072.0,
                         (_networkMetric.HighestBitrate / 131072.0), (_networkMetric.LowestBitrate / 131072.0));
-                                   
+                    PrintToConsole(
+                    "\nRTP Details\n----------------\nSeq Num: {0}\tMin Lost Pkts: {1}\nTimestamp: {2}\tSSRC: {3}\t",
+                    _rtpMetric.LastSequenceNumber, _rtpMetric.MinLostPackets, _rtpMetric.LastTimestamp, _rtpMetric.Ssrc);
+
                 }
 
                 Thread.Sleep(20);
@@ -200,6 +203,7 @@ namespace NmosAnalyser
                 try
                 {
                     _networkMetric.AddPacket(data);
+                    _rtpMetric.AddPacket(data);
                 }
                 catch (Exception ex)
                 {
