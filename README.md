@@ -42,3 +42,12 @@ Please enter the multicast address to listen to (e.g. 239.1.1.1):
 ```
 
 Because most of the time you might want a quick-and-dirty scan of a stream, if you just double-click the EXE (or run without arguments) it will ask you interactively what multicast address and group you want to listen to - perfect for people that hate typing!
+
+Even better, just to make your life easier, we auto-build this using AppVeyor - here is how we are doing right now: 
+
+[![Build status](https://ci.appveyor.com/api/projects/status/a9fskf6du98g6ebj?svg=true)](https://ci.appveyor.com/project/cinegy/nmosanalyser/branch/master)
+
+We're just getting started, but if you want you can check out a compiled binary from the latest code here:
+
+[AppVeyor TSAnalyser Project Builder](https://ci.appveyor.com/project/cinegy/nmosanalyser)
+
