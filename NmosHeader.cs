@@ -19,6 +19,10 @@ namespace NmosAnalyser
                 ExtensionLength = (data[14] << 8) + data[15]
             };
 
+            if (nmosHeader.ExtensionLength > 1)
+            {
+
+            }
             return nmosHeader;
         }
     }
