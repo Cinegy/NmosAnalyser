@@ -55,6 +55,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="INmosAnalyserApi.cs" />
+    <Compile Include="NmosHeader.cs" />
+    <Compile Include="NmosRtpMetric.cs" />
     <Compile Include="SerialisableMetrics.cs" />
     <Compile Include="NetworkMetric.cs" />
     <Compile Include="Options.cs" />

@@ -43,6 +43,7 @@ namespace NmosAnalyser
         private static StreamWriter _logFileStream = null;
         private static NetworkMetric _networkMetric = new NetworkMetric();
         private static RtpMetric _rtpMetric = new RtpMetric();
+        private static NmosRtpMetric _nmosMetric = new NmosRtpMetric();
 
         static void Main(string[] args)
         {
@@ -158,6 +159,9 @@ namespace NmosAnalyser
                     PrintToConsole(
                     "\nRTP Details\n----------------\nSeq Num: {0}\tMin Lost Pkts: {1}\nTimestamp: {2}\tSSRC: {3}\t",
                     _rtpMetric.LastSequenceNumber, _rtpMetric.MinLostPackets, _rtpMetric.LastTimestamp, _rtpMetric.Ssrc);
+                    PrintToConsole(
+                    "\nNMOS Details\n----------------\nHeader Count: {0}\tExtension Length: {1}",
+                   _nmosMetric.TotalNmosHeaders, _nmosMetric.LastNmosHeader.ExtensionLength);
 
                 }
 
@@ -176,7 +180,7 @@ namespace NmosAnalyser
             var localEp = new IPEndPoint(listenAddress, multicastGroup);
 
             _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            _udpClient.Client.ReceiveBufferSize = 1024*256;
+            _udpClient.Client.ReceiveBufferSize = 1024*1024*10;
             _udpClient.ExclusiveAddressUse = false;
             _udpClient.Client.Bind(localEp);
             _networkMetric.UdpClient = _udpClient;
@@ -204,6 +208,12 @@ namespace NmosAnalyser
                 {
                     _networkMetric.AddPacket(data);
                     _rtpMetric.AddPacket(data);
+
+                    if (_rtpMetric.HasExtension)
+                    {
+                        _nmosMetric.AddPacket(data);
+                    }
+
                 }
                 catch (Exception ex)
                 {

@@ -9,9 +9,11 @@ namespace NmosAnalyser
         public int LastSequenceNumber { get; private set; }
         public uint Ssrc { get; private set; }
         public uint LastTimestamp { get; private set; }
+        public bool HasExtension { get; private set; }
 
         public void AddPacket(byte[] data)
         {
+            HasExtension = (data[0] & 0x10) != 0;
             var seqNum = (data[2] << 8) + data[3];
             Ssrc = (uint) ((data[4] << 24) + (data[5] << 16) + (data[6] << 8) + data[7]);
             LastTimestamp = (uint) ((data[4] << 24) + (data[5] << 16) + (data[6] << 8) + data[7]);
