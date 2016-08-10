@@ -7,23 +7,19 @@ namespace NmosAnalyser
 {
     public struct NmosHeader
     {
-           public int ExtensionLength { get; set; }
-     }
+        public Dictionary<int, string> NmosHeaders { get; set; }
+    }
 
     public class NmosHeaderFactory
     {
-        public static NmosHeader GetNmosHeaderFromData(byte[] data)
+        public static NmosHeader GetNmosHeaderFromData(RtpPacket rtpPacket)
         {
-            var nmosHeader = new NmosHeader()
+            var retval = new NmosHeader();
+            foreach (var rtpExtensionHeader in rtpPacket.ExtensionHeaders)
             {
-                ExtensionLength = (data[14] << 8) + data[15]
-            };
-
-            if (nmosHeader.ExtensionLength > 1)
-            {
-
+                
             }
-            return nmosHeader;
+            return retval;
         }
     }
 }

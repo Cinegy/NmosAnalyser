@@ -15,7 +15,6 @@
 
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -33,17 +32,18 @@ namespace NmosAnalyser
     {
         private static bool _receiving;
         private static bool _suppressConsoleOutput;
-        private static DateTime _startTime = DateTime.UtcNow;
+        private static readonly DateTime StartTime = DateTime.UtcNow;
         private static string _logFile;
         private static bool _pendingExit;
         private static ServiceHost _serviceHost;
         private static NmosAnalyserApi _nmosAnalyserApi;
-        private static UdpClient _udpClient = new UdpClient { ExclusiveAddressUse = false };
-        private static object _logfileWriteLock = new object();
-        private static StreamWriter _logFileStream = null;
-        private static NetworkMetric _networkMetric = new NetworkMetric();
-        private static RtpMetric _rtpMetric = new RtpMetric();
-        private static NmosRtpMetric _nmosMetric = new NmosRtpMetric();
+        private static readonly UdpClient UdpClient = new UdpClient { ExclusiveAddressUse = false };
+        private static readonly object LogfileWriteLock = new object();
+        private static StreamWriter _logFileStream;
+        private static readonly NetworkMetric NetworkMetric = new NetworkMetric();
+        private static readonly RtpMetric RtpMetric = new RtpMetric();
+        private static readonly NmosRtpMetric NmosMetric = new NmosRtpMetric();
+        private static readonly AvcMetric AvcMetric = new AvcMetric();
 
         static void Main(string[] args)
         {
@@ -51,8 +51,8 @@ namespace NmosAnalyser
 
             Console.CancelKeyPress += Console_CancelKeyPress;
 
-            Console.WriteLine("Cinegy Simple RTP and NMOS monitoring tool v1.0.0 ({0})\n",
-                File.GetCreationTime(Assembly.GetExecutingAssembly().Location));
+            Console.WriteLine(
+                $"Cinegy Simple RTP and NMOS monitoring tool v1.0.0 ({File.GetCreationTime(Assembly.GetExecutingAssembly().Location)})\n");
 
             try
             {
@@ -126,10 +126,10 @@ namespace NmosAnalyser
 
             while (!_pendingExit)
             {
-                var runningTime = DateTime.UtcNow.Subtract(_startTime);
+                var runningTime = DateTime.UtcNow.Subtract(StartTime);
 
                 //causes occasional total refresh to erase glitches that build up
-                if (runningTime.Milliseconds < 20)
+                if (runningTime.Milliseconds < 1)
                 {
                     Console.Clear();
                 }
@@ -139,7 +139,7 @@ namespace NmosAnalyser
                 {
                     Console.SetCursorPosition(0, 0);
 
-                    PrintToConsole($"Cinegy NMOS Analyser");
+                    PrintToConsole("Cinegy NMOS Analyser");
                     if(options.EnableWebServices & (_serviceHost?.State == CommunicationState.Opened))
                     {
                         PrintToConsole($"Web Service Enabled - browse to {options.ServiceUrl}/");
@@ -148,20 +148,30 @@ namespace NmosAnalyser
                         options.MulticastGroup, runningTime);
                     PrintToConsole(
                         "Network Details\n----------------\nTotal Packets Rcvd: {0} \tBuffer Usage: {1:0.00}%\t\t\nTotal Data (MB): {2}\t\tPackets per sec:{3}",
-                        _networkMetric.TotalPackets, _networkMetric.NetworkBufferUsage, _networkMetric.TotalData / 1048576,
-                        _networkMetric.PacketsPerSecond);
-                    PrintToConsole("Time Between Packets (ms): {0} \tShortest/Longest: {1}/{2}",
-                        _networkMetric.TimeBetweenLastPacket, _networkMetric.ShortestTimeBetweenPackets,
-                        _networkMetric.LongestTimeBetweenPackets);
+                        NetworkMetric.TotalPackets, NetworkMetric.NetworkBufferUsage, NetworkMetric.TotalData / 1048576,
+                        NetworkMetric.PacketsPerSecond);
+                    PrintToConsole("Time Between Packets (ms): {0} \tShortest/Avg/Longest: {1}/{2}/{3}",
+                        NetworkMetric.TimeBetweenLastPacket, NetworkMetric.ShortestTimeBetweenPackets, NetworkMetric.AverageTimeBetweenPackets,
+                        NetworkMetric.LongestTimeBetweenPackets);
                     PrintToConsole("Bitrates (Mbps): {0:0.00}/{1:0.00}/{2:0.00}/{3:0.00} (Current/Avg/Peak/Low)\t\t\t",
-                        (_networkMetric.CurrentBitrate / 131072.0), _networkMetric.AverageBitrate / 131072.0,
-                        (_networkMetric.HighestBitrate / 131072.0), (_networkMetric.LowestBitrate / 131072.0));
+                        (NetworkMetric.CurrentBitrate / 131072.0), NetworkMetric.AverageBitrate / 131072.0,
+                        (NetworkMetric.HighestBitrate / 131072.0), (NetworkMetric.LowestBitrate / 131072.0));
                     PrintToConsole(
                     "\nRTP Details\n----------------\nSeq Num: {0}\tMin Lost Pkts: {1}\nTimestamp: {2}\tSSRC: {3}\t",
-                    _rtpMetric.LastSequenceNumber, _rtpMetric.MinLostPackets, _rtpMetric.LastTimestamp, _rtpMetric.Ssrc);
-                    PrintToConsole(
-                    "\nNMOS Details\n----------------\nHeader Count: {0}\tExtension Length: {1}",
-                   _nmosMetric.TotalNmosHeaders, _nmosMetric.LastNmosHeader.ExtensionLength);
+                    RtpMetric.LastSequenceNumber, RtpMetric.MinLostPackets, RtpMetric.LastTimestamp, RtpMetric.Ssrc);
+
+                    if (NmosMetric.LastStartNmosHeaders != null)
+                    {
+                        PrintToConsole("\nNMOS Details\n----------------\n");
+
+
+                        foreach (var lastStartNmosHeader in NmosMetric.LastStartNmosHeaders)
+                        {
+                            PrintToConsole(System.Text.Encoding.Default.GetString(lastStartNmosHeader.Data));
+
+
+                        }
+                    }
 
                 }
 
@@ -179,18 +189,18 @@ namespace NmosAnalyser
 
             var localEp = new IPEndPoint(listenAddress, multicastGroup);
 
-            _udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            _udpClient.Client.ReceiveBufferSize = 1024*1024*10;
-            _udpClient.ExclusiveAddressUse = false;
-            _udpClient.Client.Bind(localEp);
-            _networkMetric.UdpClient = _udpClient;
+            UdpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            UdpClient.Client.ReceiveBufferSize = 1500*32;
+            UdpClient.ExclusiveAddressUse = false;
+            UdpClient.Client.Bind(localEp);
+            NetworkMetric.UdpClient = UdpClient;
 
             var parsedMcastAddr = IPAddress.Parse(multicastAddress);
-            _udpClient.JoinMulticastGroup(parsedMcastAddr, listenAddress);
+            UdpClient.JoinMulticastGroup(parsedMcastAddr, listenAddress);
 
             var ts = new ThreadStart(delegate
             {
-                ReceivingNetworkWorkerThread(_udpClient, localEp);
+                ReceivingNetworkWorkerThread(UdpClient, localEp);
             });
 
             var receiverThread = new Thread(ts) {Priority = ThreadPriority.Highest};
@@ -206,12 +216,12 @@ namespace NmosAnalyser
                 if (data == null) continue;
                 try
                 {
-                    _networkMetric.AddPacket(data);
-                    _rtpMetric.AddPacket(data);
+                    NetworkMetric.AddPacket(data);
+                    RtpMetric.AddPacket(data);
 
-                    if (_rtpMetric.HasExtension)
+                    if (RtpMetric.HasExtension)
                     {
-                        _nmosMetric.AddPacket(data);
+                        NmosMetric.AddPacket(data);
                     }
 
                 }
@@ -253,7 +263,7 @@ namespace NmosAnalyser
 
         public static void WriteToFile(object msg)
         {
-            lock (_logfileWriteLock)
+            lock (LogfileWriteLock)
             {
                 try
                 {
@@ -263,17 +273,19 @@ namespace NmosAnalyser
 
                         var fs = new FileStream(_logFile, FileMode.Append, FileAccess.Write);
 
-                        _logFileStream = new StreamWriter(fs);
-                        _logFileStream.AutoFlush = true;
+                        _logFileStream = new StreamWriter(fs) {AutoFlush = true};
                     }
 
-                    _logFileStream.WriteLine("{0} - {1}", DateTime.Now, msg);
+                    _logFileStream.WriteLine($"{DateTime.Now} - {msg}");
                 }
                 catch (Exception)
                 {
-                    Debug.WriteLine("Concurrency error writing to log file...");
-                    _logFileStream.Close();
-                    _logFileStream.Dispose();
+                    Console.WriteLine("Concurrency error writing to log file...");
+                    if (_logFileStream != null)
+                    {
+                        _logFileStream.Close();
+                        _logFileStream.Dispose();
+                    }
                 }
             }
         }
@@ -288,8 +300,8 @@ namespace NmosAnalyser
 
             _nmosAnalyserApi = new NmosAnalyserApi
             {
-                NetworkMetric = _networkMetric,
-                RtpMetric = _rtpMetric
+                NetworkMetric = NetworkMetric,
+                RtpMetric = RtpMetric
             };
 
             _nmosAnalyserApi.StreamCommand += _tsAnalyserApi_StreamCommand;
@@ -353,8 +365,8 @@ namespace NmosAnalyser
                 case (StreamCommandType.ResetMetrics):
                     SetupMetrics();
 
-                    _nmosAnalyserApi.NetworkMetric = _networkMetric;
-                    _nmosAnalyserApi.RtpMetric = _rtpMetric;
+                    _nmosAnalyserApi.NetworkMetric = NetworkMetric;
+                    _nmosAnalyserApi.RtpMetric = RtpMetric;
 
                     break;
                 case (StreamCommandType.StopStream):
@@ -363,9 +375,10 @@ namespace NmosAnalyser
                 case (StreamCommandType.StartStream):
                     //todo: implement
                     break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
     }
-
 }
 

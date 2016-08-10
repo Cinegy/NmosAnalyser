@@ -17,6 +17,10 @@ namespace NmosAnalyser
         private long _dataThisSecond;
         private long _lastPacketTime;
         private int _packetsThisSecond;
+        private int _averageTimeBetweenPackets;
+
+        private long[] _jitterSamples = new long[ushort.MaxValue];
+        private ushort _jitterSampleCounter = 0;
 
         private DateTime _startTime;
         private long _timerFreq;
@@ -56,6 +60,22 @@ namespace NmosAnalyser
 
         public long ShortestTimeBetweenPackets { get; set; }
 
+        public long AverageTimeBetweenPackets
+        {
+            get
+            {
+                var len = _jitterSamples.Length;
+                long cume = 0;
+                for (var i = 0; i < len; i++)
+                {
+                    cume += _jitterSamples[i];
+                }
+
+                var timePerPacket = cume/len;
+                return timePerPacket;
+            }
+        }
+
         public UdpClient UdpClient { get; set; }
 
         [DllImport(Lib)]
@@ -74,12 +94,17 @@ namespace NmosAnalyser
             QueryPerformanceCounter(out _currentPacketTime);
 
             var timeBetweenLastPacket = (_currentPacketTime - _lastPacketTime)*1000;
+            
 
             timeBetweenLastPacket = timeBetweenLastPacket/_timerFreq;
+
+            _jitterSamples[_jitterSampleCounter++] = timeBetweenLastPacket;
 
             TimeBetweenLastPacket = timeBetweenLastPacket;
 
             _lastPacketTime = _currentPacketTime;
+            _jitterSamples[_jitterSampleCounter++] = TimeBetweenLastPacket;
+
 
             if (TotalPackets == 1)
             {

@@ -54,9 +54,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AvcMetric.cs" />
+    <Compile Include="BitWriter.cs" />
     <Compile Include="INmosAnalyserApi.cs" />
     <Compile Include="NmosHeader.cs" />
     <Compile Include="NmosRtpMetric.cs" />
+    <Compile Include="RtpPacket.cs" />
     <Compile Include="SerialisableMetrics.cs" />
     <Compile Include="NetworkMetric.cs" />
     <Compile Include="Options.cs" />
