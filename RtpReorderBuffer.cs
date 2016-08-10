@@ -134,7 +134,7 @@ namespace NmosAnalyser
 
         private static void PrintToConsole(string message, bool verbose = false)
         {
-            //Console.WriteLine(message);
+            System.Diagnostics.Debug.WriteLine(message);
         }
     }
 }
