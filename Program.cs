@@ -45,6 +45,8 @@ namespace NmosAnalyser
         private static readonly NmosRtpMetric NmosMetric = new NmosRtpMetric();
         private static readonly AvcMetric AvcMetric = new AvcMetric();
 
+        private static readonly RtpReorderBuffer RtpInputReorderBuffer = new RtpReorderBuffer();
+
         static void Main(string[] args)
         {
             var options = new Options();
@@ -217,13 +219,20 @@ namespace NmosAnalyser
                 try
                 {
                     NetworkMetric.AddPacket(data);
-                    RtpMetric.AddPacket(data);
+                    RtpInputReorderBuffer.PushNewRtpPacket(new RtpPacket(data));
 
-                    if (RtpMetric.HasExtension)
+                    var prevRtpSeqNum = RtpInputReorderBuffer.LastReturnedRtpSequenceNumber;
+                    var bufferedPacket = RtpInputReorderBuffer.GetNextRtpPacket();
+
+                    if (bufferedPacket != null)
                     {
-                        NmosMetric.AddPacket(data);
+                        RtpMetric.AddPacket(data);
+                        if (RtpMetric.HasExtension)
+                        {
+                            NmosMetric.AddPacket(data);
+                        }
                     }
-
+                    
                 }
                 catch (Exception ex)
                 {

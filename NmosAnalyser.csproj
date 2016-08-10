@@ -60,6 +60,7 @@
     <Compile Include="NmosHeader.cs" />
     <Compile Include="NmosRtpMetric.cs" />
     <Compile Include="RtpPacket.cs" />
+    <Compile Include="RtpReorderBuffer.cs" />
     <Compile Include="SerialisableMetrics.cs" />
     <Compile Include="NetworkMetric.cs" />
     <Compile Include="Options.cs" />
