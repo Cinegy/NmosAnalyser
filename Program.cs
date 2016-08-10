@@ -355,7 +355,8 @@ namespace NmosAnalyser
 
         private static void SetupMetrics()
         {
-            //currently does nothing... will be extended once NMOS parsing is sorted           
+            RtpMetric.SequenceDiscontinuityDetected += RtpMetric_SequenceDiscontinuityDetected;
+            NetworkMetric.BufferOverflow += NetworkMetric_BufferOverflow;     
         }
 
         private static void _tsAnalyserApi_StreamCommand(object sender, StreamCommandEventArgs e)

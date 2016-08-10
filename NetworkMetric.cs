@@ -17,10 +17,8 @@ namespace NmosAnalyser
         private long _dataThisSecond;
         private long _lastPacketTime;
         private int _packetsThisSecond;
-        private int _averageTimeBetweenPackets;
-
-        private long[] _jitterSamples = new long[ushort.MaxValue];
-        private ushort _jitterSampleCounter = 0;
+        private readonly long[] _jitterSamples = new long[ushort.MaxValue + 1];
+        private ushort _jitterSampleCounter;
 
         private DateTime _startTime;
         private long _timerFreq;
@@ -40,7 +38,7 @@ namespace NmosAnalyser
 
         public long LowestBitrate { get; private set; } = 999999999;
 
-        public long AverageBitrate => (long) (TotalData/DateTime.UtcNow.Subtract(_startTime).TotalSeconds);
+        public long AverageBitrate => (long)(TotalData / DateTime.UtcNow.Subtract(_startTime).TotalSeconds);
 
         public int PacketsPerSecond { get; private set; }
 
@@ -50,7 +48,7 @@ namespace NmosAnalyser
             {
                 if (UdpClient == null) return -1;
                 float avail = UdpClient.Available;
-                return avail/UdpClient.Client.ReceiveBufferSize*100;
+                return avail / UdpClient.Client.ReceiveBufferSize * 100;
             }
         }
 
@@ -71,7 +69,7 @@ namespace NmosAnalyser
                     cume += _jitterSamples[i];
                 }
 
-                var timePerPacket = cume/len;
+                var timePerPacket = cume / len;
                 return timePerPacket;
             }
         }
@@ -93,18 +91,14 @@ namespace NmosAnalyser
 
             QueryPerformanceCounter(out _currentPacketTime);
 
-            var timeBetweenLastPacket = (_currentPacketTime - _lastPacketTime)*1000;
-            
+            var timeBetweenLastPacket = (_currentPacketTime - _lastPacketTime) * 1000;
 
-            timeBetweenLastPacket = timeBetweenLastPacket/_timerFreq;
-
-            _jitterSamples[_jitterSampleCounter++] = timeBetweenLastPacket;
+            timeBetweenLastPacket = timeBetweenLastPacket / _timerFreq;
 
             TimeBetweenLastPacket = timeBetweenLastPacket;
 
             _lastPacketTime = _currentPacketTime;
             _jitterSamples[_jitterSampleCounter++] = TimeBetweenLastPacket;
-
 
             if (TotalPackets == 1)
             {
@@ -163,6 +157,7 @@ namespace NmosAnalyser
             {
                 _bufferOverflow = false;
             }
+
         }
 
         public void RegisterFirstPacket()
