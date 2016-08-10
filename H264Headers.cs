@@ -20,7 +20,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
 
-namespace NmoasAnalyser
+namespace NmosAnalyser
 {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public unsafe struct H264HrdParams

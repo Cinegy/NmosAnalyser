@@ -31,7 +31,7 @@ namespace NmosAnalyser
                 if (LastSequenceNumber != ushort.MaxValue)
                 {
                     MinLostPackets += ushort.MaxValue - LastSequenceNumber;
-                    OnSequenceDiscontinuityDetected();
+                    OnSequenceDiscontinuityDetected(new SequenceDiscontinuityEventArgs() { LastSequenceNumber = LastSequenceNumber, NewSequenceNumber = seqNum });
                 }
             }
             else if (LastSequenceNumber + 1 != seqNum)
@@ -43,9 +43,9 @@ namespace NmosAnalyser
                     seqDiff = seqNum + ushort.MaxValue - LastSequenceNumber;
                 }
                 MinLostPackets += seqDiff;
-                OnSequenceDiscontinuityDetected();
-            }
+                OnSequenceDiscontinuityDetected(new SequenceDiscontinuityEventArgs() { LastSequenceNumber = LastSequenceNumber, NewSequenceNumber = seqNum });
 
+            }
 
             LastSequenceNumber = seqNum;
         }
@@ -57,12 +57,17 @@ namespace NmosAnalyser
         }
 
         // Sequence Counter Error has been detected
-        public event EventHandler SequenceDiscontinuityDetected;
-
-        protected virtual void OnSequenceDiscontinuityDetected()
-        {
+        public event EventHandler<SequenceDiscontinuityEventArgs> SequenceDiscontinuityDetected;
+        
+        protected virtual void OnSequenceDiscontinuityDetected(SequenceDiscontinuityEventArgs args)
+        {  
             var handler = SequenceDiscontinuityDetected;
-            handler?.Invoke(this, EventArgs.Empty);
+            handler?.Invoke(this, args);
         }
+    }
+    public class SequenceDiscontinuityEventArgs : EventArgs
+    {
+        public int LastSequenceNumber { get; set; }
+        public int NewSequenceNumber { get; set; }
     }
 }

@@ -167,12 +167,20 @@ namespace NmosAnalyser
                         PrintToConsole("\nNMOS Details\n----------------\n");
 
 
-                        foreach (var lastStartNmosHeader in NmosMetric.LastStartNmosHeaders)
+                        foreach (var nmosHeader in NmosMetric.LastStartNmosHeaders)
                         {
-                            PrintToConsole(System.Text.Encoding.Default.GetString(lastStartNmosHeader.Data));
-
-
+                            var hdrString = System.Text.Encoding.Default.GetString(nmosHeader.Data);
+                            PrintToConsole(hdrString);
+                          
                         }
+                    }
+
+                    if (NmosMetric.IsAvc)
+                    {
+                        PrintToConsole("\nNMOS MIME Detected - Payload in RFC6184 Format (H264)\n----------------\n");
+                        PrintToConsole($"Video Raster Width:\t{NmosMetric.VideoWidth}\n");
+
+
                     }
 
                 }
@@ -192,7 +200,7 @@ namespace NmosAnalyser
             var localEp = new IPEndPoint(listenAddress, multicastGroup);
 
             UdpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            UdpClient.Client.ReceiveBufferSize = 1500*32;
+            UdpClient.Client.ReceiveBufferSize = 1500*1024;
             UdpClient.ExclusiveAddressUse = false;
             UdpClient.Client.Bind(localEp);
             NetworkMetric.UdpClient = UdpClient;
@@ -215,29 +223,46 @@ namespace NmosAnalyser
             while (_receiving)
             {
                 var data = client.Receive(ref localEp);
+              
                 if (data == null) continue;
                 try
                 {
                     NetworkMetric.AddPacket(data);
-                    RtpInputReorderBuffer.PushNewRtpPacket(new RtpPacket(data));
+                    RtpMetric.AddPacket(data);
 
-                    var prevRtpSeqNum = RtpInputReorderBuffer.LastReturnedRtpSequenceNumber;
-                    var bufferedPacket = RtpInputReorderBuffer.GetNextRtpPacket();
-
-                    if (bufferedPacket != null)
+                    if (RtpMetric.HasExtension)
                     {
-                        RtpMetric.AddPacket(data);
-                        if (RtpMetric.HasExtension)
-                        {
-                            NmosMetric.AddPacket(data);
-                        }
+                        NmosMetric.AddPacket(data);
                     }
-                    
+
+
+                    //RtpInputReorderBuffer.PushNewRtpPacket(new RtpPacket(data));
+
+                    //var prevRtpSeqNum = RtpInputReorderBuffer.LastReturnedRtpSequenceNumber;
+                    //var bufferedPacket = RtpInputReorderBuffer.GetNextRtpPacket();
+
+                    //if (bufferedPacket != null)
+                    //{
+                    //    RtpMetric.AddPacket(data);
+                    //    if (RtpMetric.HasExtension)
+                    //    {
+                    //     //   NmosMetric.AddPacket(data);
+                    //    }
+                    //}
+
                 }
                 catch (Exception ex)
                 {
                     LogMessage($@"Unhandled exception within network receiver: {ex.Message}");
                 }
+            }
+        }
+
+        private void CheckPacketForSpsPps(RtpPacket packet)
+        {
+            if((packet.Payload[0] & 0x18) == 0x18)
+            {
+               // ReadStapAPayload(bufferedPacket);
             }
         }
         
@@ -248,9 +273,9 @@ namespace NmosAnalyser
             e.Cancel = true;
         }
         
-        private static void RtpMetric_SequenceDiscontinuityDetected(object sender, EventArgs e)
+        private static void RtpMetric_SequenceDiscontinuityDetected(object sender, SequenceDiscontinuityEventArgs e)
         {
-            LogMessage("Discontinuity in RTP sequence.");
+            LogMessage($"Discontinuity in RTP sequence - Last:{e.LastSequenceNumber}, New:{e.NewSequenceNumber}, Diff: {e.NewSequenceNumber-e.LastSequenceNumber}");
         }
 
         private static void NetworkMetric_BufferOverflow(object sender, EventArgs e)
