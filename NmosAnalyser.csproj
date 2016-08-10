@@ -25,6 +25,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -55,7 +56,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AvcMetric.cs" />
+    <Compile Include="BitReader.cs" />
     <Compile Include="BitWriter.cs" />
+    <Compile Include="H264Headers.cs" />
     <Compile Include="INmosAnalyserApi.cs" />
     <Compile Include="NmosHeader.cs" />
     <Compile Include="NmosRtpMetric.cs" />
